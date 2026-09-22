@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Test
+        run: |
+          go test -race ./...
+          go vet ./...
+      - name: Build release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+            os="${target%/*}"
+            arch="${target#*/}"
+            CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build \
+              -trimpath \
+              -ldflags="-s -w -X github.com/macguff/cx/internal/cx.BuildVersion=$version" \
+              -o "dist/cx_${GITHUB_REF_NAME}_${os}_${arch}" \
+              ./cmd/cx
+          done
+          test "$(dist/cx_${GITHUB_REF_NAME}_linux_amd64 --version)" = "cx $version"
+          (cd dist && sha256sum cx_* > checksums.txt)
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --verify-tag \
+            --title "cx $GITHUB_REF_NAME" \
+            --generate-notes
