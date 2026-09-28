@@ -11,14 +11,17 @@ import (
 )
 
 type modelUsageProfile struct {
-	Name       string
-	Current    bool
-	FiveHour   map[string]tokenUsage
-	SevenDay   map[string]tokenUsage
-	AllTime    map[string]tokenUsage
-	Monthly    map[string]tokenUsage
-	AsOf       time.Time
-	UsageError string
+	Name        string
+	Current     bool
+	FiveHour    map[string]tokenUsage
+	SevenDay    map[string]tokenUsage
+	AllTime     map[string]tokenUsage
+	Monthly     map[string]tokenUsage
+	TopFiveHour []pricedWindow
+	WeeklyPeak  []pricedWindow
+	Unpriced    []string
+	AsOf        time.Time
+	UsageError  string
 }
 
 type monthlyUsagePoint struct {
@@ -61,7 +64,11 @@ func (a *App) modelUsageProfiles(now time.Time) ([]modelUsageProfile, error) {
 			profile.SevenDay, usageErr = scanProfileUsageByModel(profilePath, usage7Days, now)
 		}
 		if usageErr == nil {
-			profile.AllTime, profile.Monthly, usageErr = scanProfileUsageByModelAndMonth(profilePath, usageAll, now)
+			var records []usageRecord
+			_, profile.AllTime, profile.Monthly, usageErr = scanProfileUsageDetailedWithRecords(profilePath, usageAll, now, true, true, &records)
+			if usageErr == nil {
+				profile.TopFiveHour, profile.WeeklyPeak, profile.Unpriced = peakUsage(records)
+			}
 		}
 		if usageErr != nil {
 			profile.UsageError = usageErr.Error()
@@ -131,6 +138,32 @@ func writeModelUsage(out io.Writer, profiles []modelUsageProfile) error {
 				}
 			}
 			if _, err := fmt.Fprintf(out, "  Trend: %s  (%s to %s)\n", monthlySparkline(months), months[0].Month, months[len(months)-1].Month); err != nil {
+				return err
+			}
+		}
+		if len(profile.TopFiveHour) > 0 {
+			if _, err := fmt.Fprintln(out, "\n  TOP 5-HOUR WINDOWS (estimated USD)"); err != nil {
+				return err
+			}
+			for i, peak := range profile.TopFiveHour {
+				if _, err := fmt.Fprintf(out, "  %d. %s\n", i+1, formatPeak(peak)); err != nil {
+					return err
+				}
+			}
+			if _, err := fmt.Fprintln(out, "\n  WEEKLY PEAK 5-HOUR WINDOWS (week starts Monday)"); err != nil {
+				return err
+			}
+			for _, peak := range profile.WeeklyPeak {
+				if _, err := fmt.Fprintf(out, "  Week %s: %s\n", weekStart(peak.End).Format("2006-01-02"), formatPeak(peak)); err != nil {
+					return err
+				}
+			}
+			if _, err := fmt.Fprintln(out, "  Cost uses current standard API rates; Codex subscription quota usage is unavailable in local logs."); err != nil {
+				return err
+			}
+		}
+		if len(profile.Unpriced) > 0 {
+			if _, err := fmt.Fprintf(out, "  Unpriced models omitted from cost estimates: %s\n", formatUnknownModels(profile.Unpriced)); err != nil {
 				return err
 			}
 		}

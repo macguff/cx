@@ -133,7 +133,14 @@ cx usage
 This lists every profile and model with totals for the last 5 hours, last 7
 days, and all time. It also shows monthly totals, month-over-month changes, and
 a terminal sparkline from the first recorded month through the current month.
-Older events without model metadata are grouped as `unknown`.
+It lists the five highest distinct rolling 5-hour windows with their local dates,
+and the highest 5-hour window ending in each Monday-to-Sunday week. Estimated USD
+values use each model's [standard API text-token prices](https://developers.openai.com/api/docs/pricing)
+for uncached input, cached input, and output; the current price table is applied
+to all history. These values are a way to compare usage, not actual Codex charges
+or percentages of a subscription limit. The logs do not expose the server's
+5-hour quota. Older events without model metadata are grouped as `unknown` and
+omitted from cost estimates with a notice.
 
 To include usage history from an existing default Codex installation, first
 create the destination profile, then import only its local rollout logs:

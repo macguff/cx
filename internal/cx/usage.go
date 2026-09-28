@@ -45,6 +45,12 @@ type tokenFields struct {
 	Reasoning int64 `json:"reasoning_output_tokens"`
 }
 
+type usageRecord struct {
+	Timestamp time.Time
+	Model     string
+	Tokens    tokenFields
+}
+
 func (u tokenFields) normalized() tokenFields {
 	u.Input = max(u.Input, 0)
 	u.Cached = min(max(u.Cached, 0), u.Input)
@@ -138,6 +144,10 @@ func scanProfileUsageByModelAndMonth(profile string, window usageWindow, now tim
 }
 
 func scanProfileUsageDetailed(profile string, window usageWindow, now time.Time, collectModels, collectMonths bool) (tokenUsage, map[string]tokenUsage, map[string]tokenUsage, error) {
+	return scanProfileUsageDetailedWithRecords(profile, window, now, collectModels, collectMonths, nil)
+}
+
+func scanProfileUsageDetailedWithRecords(profile string, window usageWindow, now time.Time, collectModels, collectMonths bool, records *[]usageRecord) (tokenUsage, map[string]tokenUsage, map[string]tokenUsage, error) {
 	root := filepath.Join(profile, "sessions")
 	if info, err := os.Stat(root); errors.Is(err, os.ErrNotExist) {
 		return tokenUsage{}, map[string]tokenUsage{}, map[string]tokenUsage{}, nil
@@ -164,7 +174,7 @@ func scanProfileUsageDetailed(profile string, window usageWindow, now time.Time,
 		if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 || !strings.HasPrefix(entry.Name(), "rollout-") || filepath.Ext(entry.Name()) != ".jsonl" {
 			return nil
 		}
-		fileUsage, err := scanRollout(path, window, now, seen, models, months)
+		fileUsage, err := scanRollout(path, window, now, seen, models, months, records)
 		if err != nil {
 			return err
 		}
@@ -178,7 +188,7 @@ func scanProfileUsageDetailed(profile string, window usageWindow, now time.Time,
 	return summary, models, months, nil
 }
 
-func scanRollout(path string, window usageWindow, now time.Time, seen map[string]struct{}, models, months map[string]tokenUsage) (tokenUsage, error) {
+func scanRollout(path string, window usageWindow, now time.Time, seen map[string]struct{}, models, months map[string]tokenUsage, records *[]usageRecord) (tokenUsage, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return tokenUsage{}, err
@@ -258,6 +268,9 @@ func scanRollout(path string, window usageWindow, now time.Time, seen map[string
 		seen[fingerprint] = struct{}{}
 		if !window.includes(stamp, now) {
 			continue
+		}
+		if records != nil {
+			*records = append(*records, usageRecord{Timestamp: stamp, Model: observedModel, Tokens: usage})
 		}
 		summary.Input += usage.Input
 		summary.Cached += usage.Cached

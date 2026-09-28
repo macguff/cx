@@ -436,7 +436,7 @@ func TestUsageShowsLocalUsageGroupedByModel(t *testing.T) {
 	if err := app.Run([]string{"usage"}); err != nil {
 		t.Fatal(err)
 	}
-	for _, expected := range []string{"Profile: work (current)", "gpt-5.6-sol", "gpt-5.6-luna", "1.1M", "110K", "MONTHLY TOTALS", now.Format("2006-01"), "Trend:"} {
+	for _, expected := range []string{"Profile: work (current)", "gpt-5.6-sol", "gpt-5.6-luna", "1.1M", "110K", "MONTHLY TOTALS", now.Format("2006-01"), "Trend:", "TOP 5-HOUR WINDOWS", "WEEKLY PEAK 5-HOUR WINDOWS", "$6.0320"} {
 		if !strings.Contains(out.String(), expected) {
 			t.Fatalf("usage output does not contain %q: %s", expected, out.String())
 		}
