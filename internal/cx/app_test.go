@@ -313,7 +313,7 @@ func TestTUISelectsProfileAndLaunchesCodex(t *testing.T) {
 			t.Fatal(err)
 		}
 		writeUsageEvents(t, filepath.Join(sessions, "rollout-a.jsonl"), []any{
-			usageEvent("2026-09-21T01:00:00Z", usageFields(100, 80, 10, 4), usageFields(100, 80, 10, 4)),
+			usageEvent(app.Now().UTC().Format(time.RFC3339Nano), usageFields(100, 80, 10, 4), usageFields(100, 80, 10, 4)),
 		})
 	}
 	app.Stdin = strings.NewReader("2\n")

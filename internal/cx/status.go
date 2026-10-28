@@ -75,7 +75,7 @@ func writeStatus(out io.Writer, profiles []statusProfile) error {
 	if _, err := fmt.Fprintln(out, "cx status · local usage estimates"); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintln(out, "Server-side limits and reset times are not available through the public Codex CLI."); err != nil {
+	if _, err := fmt.Fprintln(out, "View server-side limits and reset times with 'cx wake web' and refresh actual quota."); err != nil {
 		return err
 	}
 	if len(profiles) == 0 {

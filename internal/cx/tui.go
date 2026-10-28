@@ -29,7 +29,7 @@ func (a *App) tui(args []string) error {
 	reader := bufio.NewReader(a.Stdin)
 	window := usage30Days
 	for {
-		profiles, err := a.tuiProfiles(window, time.Now())
+		profiles, err := a.tuiProfiles(window, a.Now())
 		if err != nil {
 			return err
 		}
@@ -37,7 +37,7 @@ func (a *App) tui(args []string) error {
 			return err
 		}
 
-		prompt := "Select a profile number, [n] new profile, [r] range, [q] quit: "
+		prompt := "Select a profile number, [n] new profile, [r] range, [w] wake-ups, [q] quit: "
 		if len(profiles) == 0 {
 			prompt = "[n] create and sign in, [q] quit: "
 		}
@@ -54,6 +54,11 @@ func (a *App) tui(args []string) error {
 			return nil
 		case "r", "range":
 			window = nextUsageWindow(window)
+			continue
+		case "w", "wake":
+			if err := a.wakeMenu(reader); err != nil {
+				return err
+			}
 			continue
 		case "n", "new":
 			name, err := readTUILine(reader, a.Stdout, "Profile name: ")

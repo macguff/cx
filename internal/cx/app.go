@@ -1,6 +1,7 @@
 package cx
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
 const profileConfig = `cli_auth_credentials_store = "file"
@@ -39,6 +41,8 @@ type App struct {
 	Stderr   io.Writer
 	Runner   CommandRunner
 	LookPath func(string) (string, error)
+	WakeRun  func(context.Context, string, []string, []string, string, io.Writer) error
+	Now      func() time.Time
 }
 
 type ExitError struct {
@@ -84,6 +88,8 @@ func NewWithPaths(paths Paths) *App {
 		Stderr:   os.Stderr,
 		Runner:   systemRunner{},
 		LookPath: exec.LookPath,
+		WakeRun:  runWakeCommand,
+		Now:      time.Now,
 	}
 }
 
@@ -124,6 +130,8 @@ func (a *App) Run(args []string) error {
 		return a.usage(args[1:])
 	case "tui":
 		return a.tui(args[1:])
+	case "wake":
+		return a.wake(args[1:])
 	case "--":
 		return a.runCurrent(args[1:])
 	default:
@@ -157,6 +165,9 @@ Usage:
   cx import <name>                Copy local usage logs from ~/.codex into a profile
   cx status                       Show local token usage for every profile
   cx usage                        Show local token usage grouped by model
+  cx wake                         Manage scheduled Codex wake-ups interactively
+  cx wake web                     Open the local wake-up dashboard
+  cx wake help                    Show wake-up commands and background setup
   cx --version                    Print the cx version
 
 Examples:
