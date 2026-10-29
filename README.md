@@ -162,6 +162,18 @@ cx logout work
 
 ## Scheduled wake-ups
 
+Run `cx wake` (or choose `w` in `cx tui`) for the Bubble Tea terminal manager.
+Use Tab or left/right to switch between plans, accounts, history and background
+settings; up/down selects a row. Press `n` to create a plan, `e` to edit, `p`
+to pause/resume, `w` for a confirmed manual request, or `f` on an account to
+refresh its quota. The form uses Tab to move and Ctrl+S to save. Redirected
+input retains the numbered line menu.
+
+`cx wake install` and `cx wake serve` run scheduling **without Web by default**.
+Run `cx wake web` to explicitly enable Web and obtain its private access link;
+`cx wake web off` disables it again. This choice is saved in the wake data
+store. `CX_WAKE_NO_WEB=1` can force scheduling without a listener.
+
 Open the built-in local dashboard:
 
 ```sh

@@ -19,14 +19,15 @@ const wakeNotice = "Wake-ups send a real Codex request. Server quota windows and
 
 func (a *App) wake(args []string) error {
 	if len(args) == 0 {
-		return a.wakeMenu(bufio.NewReader(a.Stdin))
+		return a.wakeInteractive(bufio.NewReader(a.Stdin))
 	}
 	switch args[0] {
 	case "help", "-h", "--help":
 		_, err := fmt.Fprint(a.Stdout, `cx wake - schedule small requests through the official Codex CLI
 
   cx wake                         Open the interactive wake-up manager
-  cx wake web                     Open the local Web UI (starts the background if needed)
+  cx wake web                     Enable Web and print the local dashboard link
+  cx wake web off                 Disable Web; keep the scheduler running
   cx wake add <profile> <schedule> [--tz Area/City] [--model model]
   cx wake list                    List tasks, next runs, and last results
   cx wake run <id>                Run a task now without moving its schedule
@@ -282,6 +283,9 @@ func (a *App) writeWakePreview(task wakeTask) error {
 	model := task.Model
 	if model == "" {
 		model = "Codex CLI default"
+	}
+	if task.ReasoningEffort != "" {
+		model += " · " + task.ReasoningEffort
 	}
 	if _, err := fmt.Fprintf(a.Stdout, "\nTask %s · profile %s · model %s\nSchedule: %s\n", task.ID, task.Profile, model, task.Schedule); err != nil {
 		return err

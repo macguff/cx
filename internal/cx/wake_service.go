@@ -291,7 +291,7 @@ func (a *App) wakeManagedService(action string) error {
 			return err
 		}
 	}
-	_, err = fmt.Fprintln(a.Stdout, "Background scheduler and Web UI enabled (checks every 15 seconds while awake).\nRun 'cx wake web' for the access link. Reinstall after moving cx or changing your Codex installation/PATH.")
+	_, err = fmt.Fprintf(a.Stdout, "Background scheduler enabled (checks every 15 seconds while awake). Web enabled: %t.\nUse 'cx wake web' to enable Web, or 'cx wake web off' to disable it.\n", a.wakeWebEnabled())
 	return err
 }
 
@@ -323,6 +323,9 @@ func (a *App) wakeInstallation() (string, map[string]string, error) {
 	}
 	if bind := os.Getenv("CX_WAKE_WEB_ADDR"); bind != "" {
 		env["CX_WAKE_WEB_ADDR"] = bind
+	}
+	if os.Getenv("CX_WAKE_NO_WEB") == "1" {
+		env["CX_WAKE_NO_WEB"] = "1"
 	}
 	if strings.ContainsAny(executable, "\r\n\x00") {
 		return "", nil, errors.New("cx executable path contains unsupported characters")

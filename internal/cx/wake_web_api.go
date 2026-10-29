@@ -136,6 +136,26 @@ func (s *wakeHTTP) parseTask(input wakeTaskInput) (wakeTask, error) {
 	return task, err
 }
 
+func (a *App) updateWakeTask(task wakeTask, enabled *bool) error {
+	return a.accessWakeState(true, func(state *wakeState) error {
+		for i, old := range state.Tasks {
+			if old.ID != task.ID {
+				continue
+			}
+			if old.LastStatus == "running" {
+				return errors.New("this task is running; edit it after the request finishes")
+			}
+			task.LastRun, task.LastStatus = old.LastRun, old.LastStatus
+			if enabled == nil {
+				task.Enabled = old.Enabled
+			}
+			state.Tasks[i] = task
+			return nil
+		}
+		return errors.New("task does not exist")
+	})
+}
+
 func (s *wakeHTTP) api(w http.ResponseWriter, r *http.Request) {
 	fail := func(code int, err error) { writeWakeJSON(w, code, map[string]string{"error": err.Error()}) }
 	app := *s.app
@@ -209,23 +229,8 @@ func (s *wakeHTTP) api(w http.ResponseWriter, r *http.Request) {
 				fail(http.StatusBadRequest, err)
 				return
 			}
-			err = app.accessWakeState(true, func(state *wakeState) error {
-				for i, old := range state.Tasks {
-					if old.ID != id {
-						continue
-					}
-					if old.LastStatus == "running" {
-						return errors.New("这项计划正在执行，请完成后再编辑")
-					}
-					task.ID, task.LastRun, task.LastStatus = id, old.LastRun, old.LastStatus
-					if input.Enabled == nil {
-						task.Enabled = old.Enabled
-					}
-					state.Tasks[i] = task
-					return nil
-				}
-				return errors.New("计划不存在")
-			})
+			task.ID = id
+			err = app.updateWakeTask(task, input.Enabled)
 			if err != nil {
 				fail(http.StatusConflict, err)
 				return

@@ -1,7 +1,10 @@
 package cx
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -367,7 +370,7 @@ func TestWakeStateConcurrentChangesAndCorruption(t *testing.T) {
 
 func TestWakeTUIUsesSharedReaderAndNeverSendsOnSave(t *testing.T) {
 	a, _, calls := newWakeTestApp(t)
-	a.Stdin = strings.NewReader("w\na\n1\n3\nAsia/Shanghai\n07:00,12:01,17:02\n\ny\n1\np\nh\nq\nq\n")
+	a.Stdin = strings.NewReader("w\na\n1\n3\nAsia/Shanghai\n07:00,12:01,17:02\n\n\ny\n1\np\nh\n\nq\nq\n")
 	if err := a.Run([]string{"tui"}); err != nil {
 		t.Fatal(err)
 	}
@@ -381,6 +384,52 @@ func TestWakeTUIUsesSharedReaderAndNeverSendsOnSave(t *testing.T) {
 			t.Fatal(err)
 		}
 		_ = onlyWakeTask(t, a)
+	}
+}
+
+func TestWakeTUIEditsTaskAndShowsQuota(t *testing.T) {
+	a, now, calls := newWakeTestApp(t)
+	if err := a.addWake([]string{"work", "--daily", "05:00", "--tz", "UTC"}); err != nil {
+		t.Fatal(err)
+	}
+	old := onlyWakeTask(t, a)
+	if err := a.changeWakeTask(old.ID, "pause"); err != nil {
+		t.Fatal(err)
+	}
+	old = onlyWakeTask(t, a)
+	input := "\n\n\n06:00,11:01,17:10\ngpt-6.1-terra\nlow\ny\n"
+	if err := a.editWakeInteractive(bufio.NewReader(strings.NewReader(input)), &old); err != nil {
+		t.Fatal(err)
+	}
+	updated := onlyWakeTask(t, a)
+	if updated.ID != old.ID || updated.Enabled || updated.Model != "gpt-6.1-terra" || updated.ReasoningEffort != "low" || strings.Join(updated.Schedule.Times, ",") != "06:00,11:01,17:10" || *calls != 0 {
+		t.Fatalf("edit lost task settings: %#v", updated)
+	}
+	quota := map[string]wakeQuota{"work": {UpdatedAt: *now, Buckets: map[string]wakeQuotaBucket{"codex": {Primary: &wakeQuotaWindow{UsedPercent: 30, WindowDurationMins: 300, ResetsAt: now.Add(time.Hour).Unix()}}}}}
+	data, _ := json.Marshal(quota)
+	if err := os.WriteFile(filepath.Join(a.wakeDir(), "quotas.json"), data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	a.Stdout = &out
+	if err := a.wakeAccountsMenu(bufio.NewReader(strings.NewReader("q\n"))); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "30% used") || !strings.Contains(out.String(), "300 min") {
+		t.Fatalf("quota missing from menu: %s", out.String())
+	}
+}
+
+func TestWakeHeadlessServeDoesNotStartWeb(t *testing.T) {
+	t.Setenv("CX_WAKE_NO_WEB", "1")
+	a, _, _ := newWakeTestApp(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := a.serveWake(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(a.wakeWebPath()); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("headless scheduler created web metadata")
 	}
 }
 

@@ -56,7 +56,7 @@ func (a *App) tui(args []string) error {
 			window = nextUsageWindow(window)
 			continue
 		case "w", "wake":
-			if err := a.wakeMenu(reader); err != nil {
+			if err := a.wakeInteractive(reader); err != nil {
 				return err
 			}
 			continue

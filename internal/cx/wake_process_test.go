@@ -116,6 +116,9 @@ func TestWakeProcessFallbackLifecycle(t *testing.T) {
 		t.Fatalf("failed to fall back from a missing bus: %s, %v\n%s", output, err, log)
 	}
 	first := readWorker()
+	if first.WebUI {
+		t.Fatal("Web UI enabled by default")
+	}
 	if first.PID < 2 {
 		t.Fatal("worker never acknowledged startup")
 	}
@@ -175,6 +178,7 @@ func TestWakeProcessFallbackLifecycle(t *testing.T) {
 	if output, err := run("wake", "web"); err != nil || !strings.Contains(output, "http://127.0.0.1:") || !strings.Contains(output, "/#token=") {
 		t.Fatalf("Web UI access link is unavailable: %s, %v", output, err)
 	}
+	second = readWorker() // Explicit web enable can replace the headless worker.
 	// Replace the executable without changing its path. The next web command
 	// must detect the old server by build identity and restart it automatically.
 	build = exec.Command("go", "build", "-ldflags", "-X github.com/macguff/cx/internal/cx.BuildVersion=upgrade-test", "-o", executable, "../../cmd/cx")

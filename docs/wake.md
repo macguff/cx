@@ -41,8 +41,7 @@ and keeps local 5-hour token activity separate from quota percentages.
    `cx wake install`.
 
 Each task targets one explicit profile. Creating or executing tasks leaves the
-default profile unchanged. Use the Web dashboard to edit a schedule or model,
-or remove and recreate the task in the terminal. A manual run is an additional
+default profile unchanged. Use the Web dashboard or Bubble Tea terminal manager to edit a schedule or model. A manual run is an additional
 request and preserves the plan.
 
 ## Execution and recovery
@@ -78,8 +77,9 @@ locate the same profile store and Codex installation. They contain no credential
 and require reinstalling after either executable moves. Installing a service
 does not prevent sleep or configure wake-from-sleep behavior.
 
-The systemd and launchd backends run `wake serve` continuously so the Web UI is
-available between scheduled requests. Installation disables/removes a legacy
+The systemd and launchd backends run `wake serve` continuously. Web is disabled
+by default. `cx wake web` saves an opt-in marker and starts the listener;
+`cx wake web off` removes the marker and restarts scheduling without a listener. Installation disables/removes a legacy
 systemd timer before enabling the persistent service. The process backend
 recognizes an older worker without Web UI support, stops it through the existing
 control protocol, and starts the new binary with the same saved task store.

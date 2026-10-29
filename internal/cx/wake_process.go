@@ -108,8 +108,8 @@ func (a *App) wakeProcessService(action string) error {
 		return nil
 	case "install":
 		if configured && process.Running {
-			if !process.WebUI {
-				if _, err := fmt.Fprintln(a.Stdout, "Upgrading the background process to include the Web UI; tasks and history are kept."); err != nil {
+			if process.WebUI != a.wakeWebEnabled() {
+				if _, err := fmt.Fprintln(a.Stdout, "Upgrading the background process configuration; tasks and history are kept."); err != nil {
 					return err
 				}
 				if err := a.wakeProcessService("uninstall"); err != nil {
@@ -220,7 +220,7 @@ func (a *App) runWakeWorker(token string) error {
 	} else if requested {
 		return nil
 	}
-	process.PID, process.StartedAt, process.WebUI = os.Getpid(), a.Now(), true
+	process.PID, process.StartedAt, process.WebUI = os.Getpid(), a.Now(), a.wakeWebEnabled()
 	if err := a.saveWakeProcess(process); err != nil {
 		return err
 	}

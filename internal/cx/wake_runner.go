@@ -23,11 +23,15 @@ const (
 )
 
 func (a *App) serveWake(ctx context.Context) error {
-	stopWeb, webErrors, err := a.startWakeWeb(ctx)
-	if err != nil {
-		return err
+	var webErrors <-chan error
+	if a.wakeWebEnabled() {
+		stopWeb, errors, err := a.startWakeWeb(ctx)
+		if err != nil {
+			return err
+		}
+		defer stopWeb()
+		webErrors = errors
 	}
-	defer stopWeb()
 	if _, err := fmt.Fprintln(a.Stdout, "Wake-up scheduler running; Ctrl-C stops it. "+wakeNotice); err != nil {
 		return err
 	}

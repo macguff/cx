@@ -51,9 +51,33 @@ func (a *App) readWakeWeb() (wakeWebAddress, error) {
 	return address, nil
 }
 
+func (a *App) wakeWebEnabled() bool {
+	if os.Getenv("CX_WAKE_NO_WEB") == "1" {
+		return false
+	}
+	_, err := os.Stat(filepath.Join(a.wakeDir(), "web.enabled"))
+	return err == nil
+}
+
 func (a *App) wakeWebCommand(args []string) error {
-	if len(args) != 0 {
-		return wakeUsageError("use 'cx wake web'")
+	if len(args) > 1 || len(args) == 1 && args[0] != "off" {
+		return wakeUsageError("use 'cx wake web [off]'")
+	}
+	if err := os.MkdirAll(a.wakeDir(), 0o700); err != nil {
+		return err
+	}
+	setting := filepath.Join(a.wakeDir(), "web.enabled")
+	if len(args) == 1 {
+		if err := os.Remove(setting); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		return a.wakeService([]string{"install"})
+	}
+	if os.Getenv("CX_WAKE_NO_WEB") == "1" {
+		return errors.New("unset CX_WAKE_NO_WEB before enabling Web")
+	}
+	if err := writeFileAtomic(setting, []byte("enabled\n"), 0o600); err != nil {
+		return err
 	}
 	identity, err := wakeExecutableID()
 	if err != nil {
